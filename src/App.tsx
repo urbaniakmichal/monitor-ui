@@ -1,122 +1,97 @@
-import { useState } from 'react'
-import reactLogo from './assets/react.svg'
-import viteLogo from './assets/vite.svg'
-import heroImg from './assets/hero.png'
-import './App.css'
+import { useEffect, useState } from 'react';
+import { agentApi, type HealthResponse, type MetricsResponse } from './services/api';
 
-function App() {
-  const [count, setCount] = useState(0)
+export function App() {
+  const [health, setHealth] = useState<HealthResponse | null>(null);
+  const [metrics, setMetrics] = useState<MetricsResponse | null>(null);
+  const [error, setError] = useState<string | null>(null);
+  const [loading, setLoading] = useState<boolean>(true);
+
+  const fetchData = async () => {
+    try {
+      setError(null);
+      const [healthData, metricsData] = await Promise.all([
+        agentApi.getHealth(),
+        agentApi.getMetrics(),
+      ]);
+      setHealth(healthData);
+      setMetrics(metricsData);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Wystąpił nieoczekiwany błąd');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    fetchData();
+    const interval = setInterval(fetchData, 5000);
+    return () => clearInterval(interval);
+  }, []);
+
+  const handleStart = async () => {
+    try {
+      await agentApi.startAgent();
+      await fetchData();
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Nie udało się uruchomić agenta');
+    }
+  };
+
+  const handleStop = async () => {
+    try {
+      await agentApi.stopAgent();
+      await fetchData();
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Nie udało się zatrzymać agenta');
+    }
+  };
+
+  if (loading) {
+    return <div style={{ padding: '2rem', fontFamily: 'sans-serif' }}>Ładowanie danych z agenta...</div>;
+  }
 
   return (
-    <>
-      <section id="center">
-        <div className="hero">
-          <img src={heroImg} className="base" width="170" height="179" alt="" />
-          <img src={reactLogo} className="framework" alt="React logo" />
-          <img src={viteLogo} className="vite" alt="Vite logo" />
-        </div>
-        <div>
-          <h1>Get started</h1>
-          <p>
-            Edit <code>src/App.tsx</code> and save to test <code>HMR</code>
-          </p>
-        </div>
-        <button
-          type="button"
-          className="counter"
-          onClick={() => setCount((count) => count + 1)}
-        >
-          Count is {count}
-        </button>
-      </section>
+    <div style={{ padding: '2rem', fontFamily: 'sans-serif', maxWidth: '800px', margin: '0 auto' }}>
+      <h1>Monitor Agent Dashboard</h1>
 
-      <div className="ticks"></div>
-
-      <section id="next-steps">
-        <div id="docs">
-          <svg className="icon" role="presentation" aria-hidden="true">
-            <use href="/icons.svg#documentation-icon"></use>
-          </svg>
-          <h2>Documentation</h2>
-          <p>Your questions, answered</p>
-          <ul>
-            <li>
-              <a href="https://vite.dev/" target="_blank">
-                <img className="logo" src={viteLogo} alt="" />
-                Explore Vite
-              </a>
-            </li>
-            <li>
-              <a href="https://react.dev/" target="_blank">
-                <img className="button-icon" src={reactLogo} alt="" />
-                Learn more
-              </a>
-            </li>
-          </ul>
+      {error && (
+        <div style={{ padding: '1rem', backgroundColor: '#fee2e2', color: '#991b1b', borderRadius: '6px', marginBottom: '1rem' }}>
+          <strong>Błąd:</strong> {error}
         </div>
-        <div id="social">
-          <svg className="icon" role="presentation" aria-hidden="true">
-            <use href="/icons.svg#social-icon"></use>
-          </svg>
-          <h2>Connect with us</h2>
-          <p>Join the Vite community</p>
-          <ul>
-            <li>
-              <a href="https://github.com/vitejs/vite" target="_blank">
-                <svg
-                  className="button-icon"
-                  role="presentation"
-                  aria-hidden="true"
-                >
-                  <use href="/icons.svg#github-icon"></use>
-                </svg>
-                GitHub
-              </a>
-            </li>
-            <li>
-              <a href="https://chat.vite.dev/" target="_blank">
-                <svg
-                  className="button-icon"
-                  role="presentation"
-                  aria-hidden="true"
-                >
-                  <use href="/icons.svg#discord-icon"></use>
-                </svg>
-                Discord
-              </a>
-            </li>
-            <li>
-              <a href="https://x.com/vite_js" target="_blank">
-                <svg
-                  className="button-icon"
-                  role="presentation"
-                  aria-hidden="true"
-                >
-                  <use href="/icons.svg#x-icon"></use>
-                </svg>
-                X.com
-              </a>
-            </li>
-            <li>
-              <a href="https://bsky.app/profile/vite.dev" target="_blank">
-                <svg
-                  className="button-icon"
-                  role="presentation"
-                  aria-hidden="true"
-                >
-                  <use href="/icons.svg#bluesky-icon"></use>
-                </svg>
-                Bluesky
-              </a>
-            </li>
-          </ul>
-        </div>
-      </section>
+      )}
 
-      <div className="ticks"></div>
-      <section id="spacer"></section>
-    </>
-  )
+      <div style={{ border: '1px solid #e5e7eb', borderRadius: '8px', padding: '1.5rem', marginBottom: '1.5rem' }}>
+        <h2>Status Agenta</h2>
+        <p>Stan: <strong style={{ color: health?.status === 'running' ? '#16a34a' : '#dc2626' }}>{health?.status || 'Nieznany'}</strong></p>
+        <p>Czas działania: {health?.uptime || 'N/A'}</p>
+        <p>Wersja: {health?.version || 'N/A'}</p>
+
+        <div style={{ display: 'flex', gap: '1rem', marginTop: '1rem' }}>
+          <button
+            onClick={handleStart}
+            style={{ padding: '0.5rem 1rem', backgroundColor: '#16a34a', color: 'white', border: 'none', borderRadius: '4px', cursor: 'pointer' }}
+          >
+            Uruchom Agenta
+          </button>
+          <button
+            onClick={handleStop}
+            style={{ padding: '0.5rem 1rem', backgroundColor: '#dc2626', color: 'white', border: 'none', borderRadius: '4px', cursor: 'pointer' }}
+          >
+            Zatrzymaj Agenta
+          </button>
+        </div>
+      </div>
+
+      <div style={{ border: '1px solid #e5e7eb', borderRadius: '8px', padding: '1.5rem' }}>
+        <h2>Podgląd Metryk</h2>
+        <p>Aktualizacja: {metrics?.timestamp ? new Date(metrics.timestamp).toLocaleTimeString() : 'Brak'}</p>
+        <pre style={{ backgroundColor: '#f3f4f6', padding: '1rem', borderRadius: '6px', overflowX: 'auto', fontSize: '0.85rem' }}>
+          {JSON.stringify(metrics?.data, null, 2)}
+        </pre>
+      </div>
+    </div>
+  );
 }
 
-export default App
+export default App;
