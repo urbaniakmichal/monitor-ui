@@ -1,97 +1,106 @@
-import { useEffect, useState } from 'react';
-import { agentApi, type HealthResponse, type MetricsResponse } from './services/api';
+import {
+  useGetApiV1AgentMetrics,
+  useGetApiV1Health,
+  usePostApiV1AgentStart,
+  usePostApiV1AgentStop
+} from './api/api';
+import type { InternalApiMetricsResponse } from './api/models';
+import { InfoCard } from './components/InfoCard';
 
-export function App() {
-  const [health, setHealth] = useState<HealthResponse | null>(null);
-  const [metrics, setMetrics] = useState<MetricsResponse | null>(null);
-  const [error, setError] = useState<string | null>(null);
-  const [loading, setLoading] = useState<boolean>(true);
+export default function App() {
+  const { data: healthData } = useGetApiV1Health({
+    query: {
+      refetchInterval: 5000,
+      refetchOnWindowFocus: false,
+    },
+  });
 
-  const fetchData = async () => {
-    try {
-      setError(null);
-      const [healthData, metricsData] = await Promise.all([
-        agentApi.getHealth(),
-        agentApi.getMetrics(),
-      ]);
-      setHealth(healthData);
-      setMetrics(metricsData);
-    } catch (err) {
-      setError(err instanceof Error ? err.message : 'Wystąpił nieoczekiwany błąd');
-    } finally {
-      setLoading(false);
-    }
-  };
+  const health = healthData?.data;
+  const isRunning = health?.status === 'running' || health?.status === 'Running';
 
-  useEffect(() => {
-    fetchData();
-    const interval = setInterval(fetchData, 5000);
-    return () => clearInterval(interval);
-  }, []);
+  const { data: metricsData, isLoading, error, refetch } = useGetApiV1AgentMetrics({
+    query: {
+      refetchInterval: isRunning ? 3000 : false,
+      refetchOnWindowFocus: false,
+    },
+  });
 
-  const handleStart = async () => {
-    try {
-      await agentApi.startAgent();
-      await fetchData();
-    } catch (err) {
-      setError(err instanceof Error ? err.message : 'Nie udało się uruchomić agenta');
-    }
-  };
+  const startMutation = usePostApiV1AgentStart({
+    mutation: {
+      onSuccess: () => {
+        refetch();
+      },
+    },
+  });
 
-  const handleStop = async () => {
-    try {
-      await agentApi.stopAgent();
-      await fetchData();
-    } catch (err) {
-      setError(err instanceof Error ? err.message : 'Nie udało się zatrzymać agenta');
-    }
-  };
+  const stopMutation = usePostApiV1AgentStop({
+    mutation: {
+      onSuccess: () => {
+        refetch();
+      },
+    },
+  });
 
-  if (loading) {
-    return <div style={{ padding: '2rem', fontFamily: 'sans-serif' }}>Ładowanie danych z agenta...</div>;
+  if (isLoading) {
+    return (
+      <div className="p-8 bg-slate-50 min-h-screen flex items-center justify-center">
+        <div className="text-slate-600 font-medium">Synchronizing with server...</div>
+      </div>
+    );
   }
 
-  return (
-    <div style={{ padding: '2rem', fontFamily: 'sans-serif', maxWidth: '800px', margin: '0 auto' }}>
-      <h1>Monitor Agent Dashboard</h1>
-
-      {error && (
-        <div style={{ padding: '1rem', backgroundColor: '#fee2e2', color: '#991b1b', borderRadius: '6px', marginBottom: '1rem' }}>
-          <strong>Błąd:</strong> {error}
-        </div>
-      )}
-
-      <div style={{ border: '1px solid #e5e7eb', borderRadius: '8px', padding: '1.5rem', marginBottom: '1.5rem' }}>
-        <h2>Status Agenta</h2>
-        <p>Stan: <strong style={{ color: health?.status === 'running' ? '#16a34a' : '#dc2626' }}>{health?.status || 'Nieznany'}</strong></p>
-        <p>Czas działania: {health?.uptime || 'N/A'}</p>
-        <p>Wersja: {health?.version || 'N/A'}</p>
-
-        <div style={{ display: 'flex', gap: '1rem', marginTop: '1rem' }}>
-          <button
-            onClick={handleStart}
-            style={{ padding: '0.5rem 1rem', backgroundColor: '#16a34a', color: 'white', border: 'none', borderRadius: '4px', cursor: 'pointer' }}
-          >
-            Uruchom Agenta
-          </button>
-          <button
-            onClick={handleStop}
-            style={{ padding: '0.5rem 1rem', backgroundColor: '#dc2626', color: 'white', border: 'none', borderRadius: '4px', cursor: 'pointer' }}
-          >
-            Zatrzymaj Agenta
-          </button>
-        </div>
+  if (error) {
+    return (
+      <div className="p-8 bg-slate-50 min-h-screen flex items-center justify-center">
+        <div className="text-red-500 font-medium">API Connection Error (verify if the Go backend is running)</div>
       </div>
+    );
+  }
 
-      <div style={{ border: '1px solid #e5e7eb', borderRadius: '8px', padding: '1.5rem' }}>
-        <h2>Podgląd Metryk</h2>
-        <p>Aktualizacja: {metrics?.timestamp ? new Date(metrics.timestamp).toLocaleTimeString() : 'Brak'}</p>
-        <pre style={{ backgroundColor: '#f3f4f6', padding: '1rem', borderRadius: '6px', overflowX: 'auto', fontSize: '0.85rem' }}>
-          {JSON.stringify(metrics?.data, null, 2)}
-        </pre>
+  const response = metricsData?.data as InternalApiMetricsResponse;
+  const metricsList = response?.data;
+  const latestMetrics = metricsList && metricsList.length > 0 ? metricsList[metricsList.length - 1] : null;
+
+  return (
+    <div className="p-8 bg-slate-50 min-h-screen">
+      <div className="max-w-7xl mx-auto">
+        <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-8 bg-white p-4 rounded-xl shadow-sm border border-slate-200">
+          <div>
+            <h1 className="text-2xl font-bold text-slate-800">System Dashboard</h1>
+            <p className="text-sm text-slate-500">Monitor Agent API</p>
+          </div>
+
+          <div className="flex items-center gap-4 flex-wrap">
+            <div className="text-sm bg-slate-100 px-3 py-2 rounded-lg border border-slate-200">
+              Status: <span className={`font-bold ${isRunning ? 'text-emerald-600' : 'text-rose-600'}`}>
+                {health?.status || 'Unknown'}
+              </span>
+            </div>
+
+            <button
+              onClick={() => startMutation.mutate()}
+              disabled={startMutation.isPending || isRunning}
+              className="bg-emerald-600 hover:bg-emerald-700 text-white px-4 py-2 rounded-lg font-medium shadow-sm transition disabled:opacity-50 cursor-pointer"
+            >
+              {startMutation.isPending ? 'Starting...' : 'Start Agent'}
+            </button>
+
+            <button
+              onClick={() => stopMutation.mutate()}
+              disabled={stopMutation.isPending || !isRunning}
+              className="bg-rose-600 hover:bg-rose-700 text-white px-4 py-2 rounded-lg font-medium shadow-sm transition disabled:opacity-50 cursor-pointer"
+            >
+              {stopMutation.isPending ? 'Stopping...' : 'Stop Agent'}
+            </button>
+          </div>
+        </div>
+
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+          <InfoCard title="System Info" data={latestMetrics?.system} />
+          <InfoCard title="Hardware" data={latestMetrics?.hardware} />
+          <InfoCard title="Software" data={latestMetrics?.software} />
+        </div>
       </div>
     </div>
   );
 }
-
-export default App;
