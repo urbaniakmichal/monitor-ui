@@ -1,0 +1,3 @@
+[submodule "backend-contract"]
+	path = backend-contract
+	url = https://github.com/urbaniakmichal/monitoring-system.git
