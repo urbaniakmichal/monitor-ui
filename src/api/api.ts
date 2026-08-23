@@ -46,9 +46,9 @@ const withQueryKey = <T extends object, K>(query: T, queryKey: K): T & { queryKe
   return result;
 };
 
-export type getApiV1AgentFileResponse201 = {
-  data: void
-  status: 201
+export type getApiV1AgentFileResponse200 = {
+  data: Blob
+  status: 200
 }
 
 export type getApiV1AgentFileResponse400 = {
@@ -56,7 +56,7 @@ export type getApiV1AgentFileResponse400 = {
   status: 400
 }
 
-export type getApiV1AgentFileResponseSuccess = (getApiV1AgentFileResponse201) & {
+export type getApiV1AgentFileResponseSuccess = (getApiV1AgentFileResponse200) & {
   headers: Headers;
 };
 export type getApiV1AgentFileResponseError = (getApiV1AgentFileResponse400) & {
@@ -88,10 +88,9 @@ export const getApiV1AgentFile = async ( options?: RequestInit): Promise<getApiV
   }
 )
 
-  const contentType = (res.headers.get('content-type') ?? '').toLowerCase();
-  const body = [204, 205, 304].includes(res.status) ? null : await res.text();
 
-  const data: getApiV1AgentFileResponse['data'] = body ? (contentType.includes('json') ? JSON.parse(body) : body) : undefined
+  const body = [204, 205, 304].includes(res.status) ? null : await res.blob();
+  const data: getApiV1AgentFileResponse['data'] = body as getApiV1AgentFileResponse['data']
   return { data, status: res.status, headers: res.headers } as getApiV1AgentFileResponse
 }
 

@@ -61,6 +61,36 @@ export default function App() {
   const metricsList = response?.data;
   const latestMetrics = metricsList && metricsList.length > 0 ? metricsList[metricsList.length - 1] : null;
 
+const handleDownload = async () => {
+    try {
+      const res = await fetch('/api/v1/agent/file');
+      if (!res.ok) throw new Error('Network response was not ok');
+
+      const blob = await res.blob();
+
+      const disposition = res.headers.get('content-disposition');
+      let filename = 'report.json'; // domyślny fallback
+
+      if (disposition && disposition.includes('attachment')) {
+        const filenameMatch = disposition.match(/filename[^;=\n]*=((['"]).*?\2|[^;\n]*)/);
+        if (filenameMatch && filenameMatch[1]) {
+          filename = filenameMatch[1].replace(/['"]/g, '');
+        }
+      }
+
+      const url = window.URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = filename;
+      document.body.appendChild(a);
+      a.click();
+      a.remove();
+      window.URL.revokeObjectURL(url);
+    } catch (error) {
+      console.error('Failed to download file:', error);
+    }
+  };
+
   return (
     <div className="p-8 bg-slate-50 min-h-screen">
       <div className="max-w-7xl mx-auto">
@@ -91,6 +121,13 @@ export default function App() {
               className="bg-rose-600 hover:bg-rose-700 text-white px-4 py-2 rounded-lg font-medium shadow-sm transition disabled:opacity-50 cursor-pointer"
             >
               {stopMutation.isPending ? 'Stopping...' : 'Stop Agent'}
+            </button>
+
+            <button
+              onClick={handleDownload}
+              className="bg-sky-600 hover:bg-sky-700 text-white px-4 py-2 rounded-lg font-medium shadow-sm transition cursor-pointer"
+            >
+              Download Report
             </button>
           </div>
         </div>
