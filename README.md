@@ -1,32 +1,70 @@
-# React + TypeScript + Vite
+# 🖥️ Monitor System - Frontend UI
 
-This template provides a minimal setup to get React working in Vite with HMR and some Oxlint rules.
+The user interface dashboard for the **Monitor System** infrastructure. It provides a clean, responsive web interface to visualize system states, interact with backend services, and monitor operations in real-time.
 
-Currently, two official plugins are available:
+---
 
-- [@vitejs/plugin-react](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react) uses [Oxc](https://oxc.rs)
-- [@vitejs/plugin-react-swc](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react-swc) uses [SWC](https://swc.rs/)
+## 📋 Table of Contents
+- [About the Project](#-about-the-project)
+- [Tech Stack](#-tech-stack)
+- [Prerequisites](#-prerequisites)
+- [Getting Started](#-getting-started)
+- [Running with Docker](#-running-with-docker)
 
-## React Compiler
+---
 
-The React Compiler is not enabled on this template because of its impact on dev & build performances. To add it, see [this documentation](https://react.dev/learn/react-compiler/installation).
+## 🎯 About the Project
 
-## Expanding the Oxlint configuration
+`monitor-ui` acts as the visual control center for the platform, communicating directly with the `monitor-system` backend API to display live data and system health metrics.
 
-If you are developing a production application, we recommend enabling type-aware lint rules by installing `oxlint-tsgolint` and editing `.oxlintrc.json`:
+---
 
-```json
-{
-  "$schema": "./node_modules/oxlint/configuration_schema.json",
-  "plugins": ["react", "typescript", "oxc"],
-  "options": {
-    "typeAware": true
-  },
-  "rules": {
-    "react/rules-of-hooks": "error",
-    "react/only-export-components": ["warn", { "allowConstantExport": true }]
-  }
-}
+## 🛠️ Tech Stack
+
+* **Framework/Library:** Modern Frontend Stack (React / Vue / Vite based)
+* **Containerization:** Nginx & Docker
+
+---
+
+## 📦 Prerequisites
+
+Ensure you have the following installed on your machine:
+* [Node.js](https://nodejs.org/) (version 18+ recommended)
+* [npm](https://www.npmjs.com/) or [yarn](https://yarnpkg.com/)
+
+---
+
+## 🚀 Getting Started
+
+1. **Clone the repository:**
+   ```bash
+   git clone https://github.com/urbaniakmichal/monitor-ui.git
+   cd monitor-ui
+   ```
+
+2. **Install dependencies:**
+   ```bash
+   npm install
+   ```
+
+3. **Run the development server:**
+   ```bash
+   npm run dev
+   ```
+
+---
+
+## 🐳 Running with Docker
+
+To build and run the UI container independently or as part of the workspace:
+
+```bash
+docker build -t monitor-ui .
+docker run -p 3001:80 monitor-ui
 ```
 
-See the [Oxlint rules documentation](https://oxc.rs/docs/guide/usage/linter/rules) for the full list of rules and categories.
+---
+
+## 📄 License
+
+This project is licensed under the MIT License.
